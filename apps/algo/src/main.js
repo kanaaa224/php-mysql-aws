@@ -19,7 +19,7 @@ const vuetify = createVuetify({
                 dark: true,
                 colors: {
                     background: '#222',
-                    surface:    '#222',
+                    surface:    '#292929',
                     primary:    '#2196f3',
                     secondary:  '#eee',
                     error:      '#c23131'
