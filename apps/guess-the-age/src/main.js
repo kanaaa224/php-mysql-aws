@@ -1,9 +1,14 @@
+// 処理に必要な関数を分割代入で取得
 const { createApp, ref, onMounted, nextTick, reactive } = Vue;
 const { createVuetify, useTheme, useDisplay } = Vuetify;
 
+// 初期処理を非同期で実行（IIFE）
+// ローカルスコープを形成し、非同期処理（APIコールなど）に対応した形でアプリ初期処理を行っています。
 (async () => {
     let api_default_endpoint_url = API_ENDPOINTS_URLS[0];
 
+    // 汎用 API呼び出し 関数
+    // エントリーポイント（index.html）で定義されたエンドポイントへAPIコールします。
     const callAPI = async (endpoint = api_default_endpoint_url, queries = {}, requestBody = null) => {
         const url = new URL(endpoint);
 
@@ -22,6 +27,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // App インスタンス作成
 
     const app = createApp({
         setup() {
@@ -29,10 +35,14 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
             const display = useDisplay();
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // 汎用 変数・関数
 
             const developer = ref({});
 
+            let guessTheAge = {};
+
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // ダイアログ
 
             const dialog_settings_visible = ref(false);
 
@@ -45,6 +55,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
             };
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // App マウント後の処理
 
             const container_visible = ref(false);
 
@@ -64,6 +75,12 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='icon']")             || Object.assign(document.createElement("link"), { rel: "icon" }));
                 ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='apple-touch-icon']") || Object.assign(document.createElement("link"), { rel: "apple-touch-icon" }));
 
+                try {
+                    guessTheAge = reactive(new GuessTheAge(await (await fetch('./src/questions.json')).json()));
+                } catch(e) {
+                    console.error(e);
+                }
+
                 container_visible.value = true;
             });
 
@@ -74,6 +91,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 display,
 
                 developer,
+                guessTheAge,
 
                 dialog_settings_visible,
                 dialog_settings,
@@ -181,6 +199,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
     });
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // App インスタンスをマウント
 
     try {
         await api.connect();
