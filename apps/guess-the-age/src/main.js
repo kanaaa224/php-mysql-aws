@@ -39,7 +39,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             const developer = ref({});
 
-            let guessTheAge = {};
+            let guessTheAge = reactive(new GuessTheAge());
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ダイアログ
@@ -74,12 +74,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
                 ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='icon']")             || Object.assign(document.createElement("link"), { rel: "icon" }));
                 ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='apple-touch-icon']") || Object.assign(document.createElement("link"), { rel: "apple-touch-icon" }));
-
-                try {
-                    guessTheAge = reactive(new GuessTheAge(await (await fetch('./src/questions.json')).json()));
-                } catch(e) {
-                    console.error(e);
-                }
 
                 container_visible.value = true;
             });
@@ -135,7 +129,13 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 </v-dialog>
                 <v-main>
                     <v-fade-transition mode="out-in">
-                        <v-container v-if="container_visible"></v-container>
+                        <v-container v-if="container_visible">
+                            <v-card>
+                                <v-card-title>年齢当て</v-card-title>
+                                <v-card-subtitle>あなたの年齢を当てます</v-card-subtitle>
+                                <v-card-text>あなたの年齢を当てます</v-card-text>
+                            </v-card>
+                        </v-container>
                     </v-fade-transition>
                     <v-fade-transition mode="out-in">
                         <div
