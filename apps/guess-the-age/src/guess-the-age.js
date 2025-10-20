@@ -1,7 +1,17 @@
 class GuessTheAge {
-    constructor(questions = []) {
-        this.questions = questions;
+    constructor(range = []) {
+        this.range = range;
+    }
 
-        console.log(questions)
+    yes() {
+        //
+    }
+
+    no() {
+        //
+    }
+
+    reset() {
+        //
     }
 }
