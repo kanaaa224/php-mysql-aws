@@ -39,7 +39,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             const developer = ref({});
 
-            let guessTheAge = reactive(new GuessTheAge());
+            let guessTheAge = reactive(new GuessTheAge(20, 35, 4));
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ダイアログ
@@ -52,6 +52,31 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
                     return;
                 }
+            };
+
+            const dialog_select_range_visible = ref(false);
+            const dialog_select_range_num_1   = ref(35);
+            const dialog_select_range_num_2   = ref(20);
+            const dialog_select_range_num_3   = ref(4);
+
+            const dialog_select_range = (update = false) => {
+                if(!dialog_select_range_visible.value) {
+                    dialog_select_range_visible.value = true;
+
+                    return;
+                }
+
+                if(update) {
+                    nextTick(() => {
+                        dialog_select_range_num_3.value = Math.ceil(Math.log2(dialog_select_range_num_1.value - dialog_select_range_num_2.value + 1));
+                    });
+
+                    return;
+                }
+
+                guessTheAge = reactive(new GuessTheAge(dialog_select_range_num_2.value, dialog_select_range_num_1.value, dialog_select_range_num_3.value));
+
+                dialog_select_range_visible.value = false;
             };
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,6 +101,8 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='apple-touch-icon']") || Object.assign(document.createElement("link"), { rel: "apple-touch-icon" }));
 
                 container_visible.value = true;
+
+                dialog_select_range();
             });
 
             return {
@@ -89,6 +116,11 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
                 dialog_settings_visible,
                 dialog_settings,
+                dialog_select_range_visible,
+                dialog_select_range_num_1,
+                dialog_select_range_num_2,
+                dialog_select_range_num_3,
+                dialog_select_range,
 
                 container_visible
             }
@@ -127,14 +159,88 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                         </v-list>
                     </v-card>
                 </v-dialog>
+                <v-dialog
+                    v-model="dialog_select_range_visible"
+                    max-width="500"
+                >
+                    <v-card
+                        prepend-icon="mdi-numeric"
+                        title="年齢範囲を設定"
+                        text="二分探索法で求めるための範囲を入力"
+                    >
+                        <v-card-text>
+                            <v-number-input
+                                :max="99"
+                                :min="dialog_select_range_num_2"
+                                :model-value="dialog_select_range_num_1"
+                                @update:model-value="dialog_select_range(true)"
+                            ></v-number-input>
+                            <v-number-input
+                                :max="dialog_select_range_num_1"
+                                :min="0"
+                                :model-value="dialog_select_range_num_2"
+                            ></v-number-input>
+                            <v-number-input
+                                :max="99"
+                                :min="0"
+                                :model-value="dialog_select_range_num_3"
+                            ></v-number-input>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer />
+                            <v-btn
+                                variant="plain"
+                                text="Cancel"
+                                @click="dialog_select_range_visible = false"
+                                :disabled="dialog_select_range_loading"
+                            />
+                            <v-btn
+                                variant="tonal"
+                                text="OK"
+                                color="primary"
+                                @click="dialog_select_range()"
+                                :disabled="dialog_select_range_loading"
+                            />
+                        </v-card-actions>
+                    </v-card>
+                </v-dialog>
                 <v-main>
                     <v-fade-transition mode="out-in">
                         <v-container v-if="container_visible">
-                            <v-card>
-                                <v-card-title>年齢当て</v-card-title>
-                                <v-card-subtitle>あなたの年齢を当てます</v-card-subtitle>
-                                <v-card-text>あなたの年齢を当てます</v-card-text>
-                            </v-card>
+                            <div class="d-flex align-center justify-center" style="height: 90vh;">
+                                <v-card class="card-shadow" elevation="0" :width="display.xs.value ? '90%' : '50%'">
+                                    <v-card-title>年齢当て</v-card-title>
+                                    <v-card-subtitle>あなたの年齢を当てます</v-card-subtitle>
+                                    <div v-if="!guessTheAge.result()">
+                                        <v-card-text class="text-center my-5">あなたの年齢は {{ guessTheAge.mid() }} より上ですか？</v-card-text>
+                                        <v-card-text>
+                                            <div class="d-flex">
+                                                <v-spacer />
+                                                <v-btn
+                                                    variant="text"
+                                                    @click="guessTheAge.yes()"
+                                                ><v-icon icon="mdi-circle-outline" /> YES</v-btn>
+                                                <v-btn
+                                                    variant="text"
+                                                    @click="guessTheAge.no()"
+                                                ><v-icon icon="mdi-close" /> NO</v-btn>
+                                            </div>
+                                        </v-card-text>
+                                    </div>
+                                    <div v-else>
+                                        <v-card-text class="text-center my-5">あなたは {{ guessTheAge.result() }} 歳！</v-card-text>
+                                        <v-card-text>
+                                            <div class="d-flex">
+                                                <v-spacer />
+                                                <v-btn
+                                                    variant="text"
+                                                    @click="guessTheAge.reset()"
+                                                ><v-icon icon="mdi-replay" /> REPLAY</v-btn>
+                                            </div>
+                                        </v-card-text>
+                                    </div>
+                                </v-card>
+                            </div>
                         </v-container>
                     </v-fade-transition>
                     <v-fade-transition mode="out-in">
