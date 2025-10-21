@@ -39,6 +39,8 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             const developer = ref({});
 
+            const calculator = reactive(new Calculator());
+
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ダイアログ
 
@@ -83,6 +85,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 display,
 
                 developer,
+                calculator,
 
                 dialog_settings_visible,
                 dialog_settings,
@@ -126,7 +129,77 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 </v-dialog>
                 <v-main>
                     <v-fade-transition mode="out-in">
-                        <v-container v-if="container_visible"></v-container>
+                        <v-container v-if="container_visible">
+                            <div class="d-flex align-center justify-center" :class="display.xs.value ? 'flex-column' : ''" :style="{ height: display.xs.value ? 'auto' : '90vh' }">
+                                <v-card class="card-shadow" elevation="0" width="350">
+                                    <v-card-text>
+                                        <v-text-field
+                                            hide-details
+                                            v-model="calculator.display"
+                                            :label="calculator.label"
+                                            @update:model-value="val => calculator.update(val)"
+                                            @keydown.enter="calculator?.evaluate && calculator.evaluate()"
+                                        />
+                                        <template
+                                            v-for="(row, rIndex) in [
+                                                [ 'MC', 'MR', 'M+',  'M-' ],
+                                                [ 'AC', 'C',  '+/-', '÷' ],
+                                                [ '7',  '8',  '9',   '×' ],
+                                                [ '4',  '5',  '6',   '−' ],
+                                                [ '1',  '2',  '3',   '+' ],
+                                                [ '0',        '.',   '=' ]
+                                            ]" :key="rIndex"
+                                        >
+                                            <v-row dense>
+                                                <v-col
+                                                    v-for="btn in row"
+                                                    :key="btn"
+                                                    :cols="btn === '0' ? 6 : 3"
+                                                >
+                                                    <v-btn
+                                                        block
+                                                        :color="[ '÷', '×', '−', '+' ].includes(btn) ? 'primary' : (btn === '=' ? 'success' : undefined)"
+                                                        :variant="[ 'MC', 'MR', 'M+', 'M-', 'AC', 'C', '+/-' ].includes(btn) ? 'text' : undefined"
+                                                        style="min-height: 3.5rem;"
+                                                        @click="calculator.push(btn)"
+                                                    >{{ btn }}</v-btn>
+                                                </v-col>
+                                            </v-row>
+                                        </template>
+                                    </v-card-text>
+                                </v-card>
+                                <v-card class="card-shadow" :class="display.xs.value ? 'mt-4' : 'ml-6'" elevation="0" width="300" max-height="50%" style="overflow-y: scroll;">
+                                    <v-card-title class="py-3">
+                                        <v-row align="center" no-gutters>
+                                            <v-col>
+                                                <span class="text-subtitle-1 font-weight-medium">計算履歴</span>
+                                            </v-col>
+                                            <v-col cols="auto">
+                                                <v-btn
+                                                    icon="mdi-delete-outline"
+                                                    size="small"
+                                                    variant="text"
+                                                    @click="calculator.history = []"
+                                                    v-if="calculator.history.length"
+                                                />
+                                            </v-col>
+                                        </v-row>
+                                    </v-card-title>
+                                    <v-divider />
+                                    <v-card-text>
+                                        <v-list v-if="calculator.history.length">
+                                            <template v-for="(item, i) in calculator.history" :key="i">
+                                                <v-list-item density="compact">
+                                                    <v-list-item-title>{{ item }}</v-list-item-title>
+                                                </v-list-item>
+                                                <v-divider v-if="i < calculator.history.length - 1" />
+                                            </template>
+                                        </v-list>
+                                        <div v-else class="text-grey text-caption text-center py-2">履歴はありません</div>
+                                    </v-card-text>
+                                </v-card>
+                            </div>
+                        </v-container>
                     </v-fade-transition>
                     <v-fade-transition mode="out-in">
                         <div
