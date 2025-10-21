@@ -39,7 +39,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             const developer = ref({});
 
-            let guessTheAge = reactive(new GuessTheAge(20, 35, 4));
+            const guessTheAge = ref(new BinarySearch(20, 35, 4)); // デフォルト: 年齢範囲の下限 20、年齢範囲の上限 35、質問回数 4
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ダイアログ
@@ -54,10 +54,10 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 }
             };
 
-            const dialog_select_range_visible = ref(false);
-            const dialog_select_range_num_1   = ref(35);
-            const dialog_select_range_num_2   = ref(20);
-            const dialog_select_range_num_3   = ref(4);
+            const dialog_select_range_visible   = ref(false);
+            const dialog_select_range_value_max = ref(guessTheAge.value.max);        // 年齢範囲の上限
+            const dialog_select_range_value_min = ref(guessTheAge.value.min);        // 年齢範囲の下限
+            const dialog_select_range_value_not = ref(guessTheAge.value.numOfTimes); // 質問回数
 
             const dialog_select_range = (update = false) => {
                 if(!dialog_select_range_visible.value) {
@@ -67,14 +67,16 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 }
 
                 if(update) {
-                    nextTick(() => {
-                        dialog_select_range_num_3.value = Math.ceil(Math.log2(dialog_select_range_num_1.value - dialog_select_range_num_2.value + 1));
-                    });
+                    // 範囲の上限値と下限値から二分探索の回数を求める
+                    // (max - min + 1) | 候補の数（20 ~ 35 なら 35 - 20 + 1 = 16 通り）
+                    // Math.log2(...)  | その候補数を2で何回割れば1になるか（ = 二分探索に必要な質問回数）
+                    // Math.ceil(...)  | 小数点を切り上げ、ちょうど割り切れない範囲でも質問を一回多くしてカバーする
+                    dialog_select_range_value_not.value = Math.ceil(Math.log2(dialog_select_range_value_max.value - dialog_select_range_value_min.value + 1));
 
                     return;
                 }
 
-                guessTheAge = reactive(new GuessTheAge(dialog_select_range_num_2.value, dialog_select_range_num_1.value, dialog_select_range_num_3.value));
+                guessTheAge.value = new BinarySearch(dialog_select_range_value_min.value, dialog_select_range_value_max.value, dialog_select_range_value_not.value);
 
                 dialog_select_range_visible.value = false;
             };
@@ -117,9 +119,9 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 dialog_settings_visible,
                 dialog_settings,
                 dialog_select_range_visible,
-                dialog_select_range_num_1,
-                dialog_select_range_num_2,
-                dialog_select_range_num_3,
+                dialog_select_range_value_max,
+                dialog_select_range_value_min,
+                dialog_select_range_value_not,
                 dialog_select_range,
 
                 container_visible
@@ -166,24 +168,28 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                     <v-card
                         prepend-icon="mdi-numeric"
                         title="年齢範囲を設定"
-                        text="二分探索法で求めるための範囲を入力"
+                        text="二分探索法で求めるための年齢範囲を入力"
                     >
                         <v-card-text>
                             <v-number-input
+                                label="上限年齢"
+                                v-model="dialog_select_range_value_max"
                                 :max="99"
-                                :min="dialog_select_range_num_2"
-                                :model-value="dialog_select_range_num_1"
+                                :min="dialog_select_range_value_min"
                                 @update:model-value="dialog_select_range(true)"
                             ></v-number-input>
                             <v-number-input
-                                :max="dialog_select_range_num_1"
+                                label="下限年齢"
+                                v-model="dialog_select_range_value_min"
+                                :max="dialog_select_range_value_max"
                                 :min="0"
-                                :model-value="dialog_select_range_num_2"
+                                @update:model-value="dialog_select_range(true)"
                             ></v-number-input>
                             <v-number-input
+                                label="質問回数"
+                                v-model="dialog_select_range_value_not"
                                 :max="99"
                                 :min="0"
-                                :model-value="dialog_select_range_num_3"
                             ></v-number-input>
                         </v-card-text>
                         <v-card-actions>
@@ -212,7 +218,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                                     <v-card-title>年齢当て</v-card-title>
                                     <v-card-subtitle>あなたの年齢を当てます</v-card-subtitle>
                                     <div v-if="!guessTheAge.result()">
-                                        <v-card-text class="text-center my-5">あなたの年齢は {{ guessTheAge.mid() }} より上ですか？</v-card-text>
+                                        <v-card-text class="text-center my-5">質問 その {{ guessTheAge._numOfTimes_ - guessTheAge.numOfTimes + 1 }}（全 {{ guessTheAge._numOfTimes_ }} 問）<br>あなたの年齢は {{ guessTheAge.mid() }} より上ですか？</v-card-text>
                                         <v-card-text>
                                             <div class="d-flex">
                                                 <v-spacer />
@@ -234,8 +240,12 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                                                 <v-spacer />
                                                 <v-btn
                                                     variant="text"
+                                                    @click="dialog_select_range()"
+                                                ><v-icon icon="mdi-cog" /> 年齢範囲変更</v-btn>
+                                                <v-btn
+                                                    variant="text"
                                                     @click="guessTheAge.reset()"
-                                                ><v-icon icon="mdi-replay" /> REPLAY</v-btn>
+                                                ><v-icon icon="mdi-replay" /> リプレイ</v-btn>
                                             </div>
                                         </v-card-text>
                                     </div>
