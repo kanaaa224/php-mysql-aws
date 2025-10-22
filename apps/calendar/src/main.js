@@ -109,6 +109,44 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 calendar.deleteEvent(id);
             };
 
+            const db = reactive({
+                load: async () => {
+                    try {
+                        const response = await callAPI('http://localhost:8080/api/v1/', {}, { method: 'db_data_get', params: { name: 'calendar_events' } });
+
+                        if(!response.status) throw new Error('api-bad-status');
+
+                        if(response.data.result === 'failed') return;
+
+                        calendar.events = response.data.value;
+                    } catch(e) {
+                        console.error(e);
+                    }
+                },
+                save: async () => {
+                    try {
+                        const response = await callAPI('http://localhost:8080/api/v1/', {}, { method: 'db_data_set', params: { name: 'calendar_events', data: calendar.events } });
+
+                        if(!response.status) throw new Error('api-bad-status');
+
+                        if(response.data.result === 'failed') return;
+                    } catch(e) {
+                        console.error(e);
+                    }
+                },
+                clear: async () => {
+                    try {
+                        const response = await callAPI('http://localhost:8080/api/v1/', {}, { method: 'db_data_set', params: { name: 'calendar_events', data: {} } });
+
+                        if(!response.status) throw new Error('api-bad-status');
+
+                        if(response.data.result === 'failed') return;
+                    } catch(e) {
+                        console.error(e);
+                    }
+                }
+            })
+
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ダイアログ
 
@@ -170,6 +208,7 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 showEditEventDialog,
                 saveEvent,
                 deleteEvent,
+                db,
 
                 dialog_settings_visible,
                 dialog_settings,
@@ -382,6 +421,11 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                                     </v-card-actions>
                                 </v-card>
                             </v-dialog>
+                            <div>
+                                <v-btn variant="text" @click="db.load()">イベントデータをDBから読み込み</v-btn>
+                                <v-btn variant="text" @click="db.save()">イベントデータをDBへ保存</v-btn>
+                                <v-btn variant="text" @click="db.clear()">DBに保存されたデータをクリア</v-btn>
+                            </div>
                         </v-container>
                     </v-fade-transition>
                     <v-fade-transition mode="out-in">
