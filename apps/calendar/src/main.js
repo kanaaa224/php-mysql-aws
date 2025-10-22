@@ -39,16 +39,92 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             const developer = ref({});
 
+            const calendar = reactive(new Calendar()); // カレンダーインスタンス
+
+            const eventDialog  = ref(false); // イベント入力ダイアログ表示フラグ
+            const editingEvent = ref(null);  // 編集中のイベント情報
+
+            const eventForm = reactive({ date: '', title: '', description: ''}); // イベント入力データ
+
+            // 今日かどうかを判定
+            const isToday = (day) => {
+                const today = new Date();
+
+                return calendar.getCurrentYear() === today.getFullYear() && calendar.getCurrentMonth() === today.getMonth() && day === today.getDate();
+            };
+
+            // 日付選択
+            const selectDate = (day) => {
+                const dateStr = `${calendar.getCurrentYear()}-${String(calendar.getCurrentMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                calendar.setCurrentDate(new Date(calendar.getCurrentYear(), calendar.getCurrentMonth(), day));
+
+                calendar.setViewMode('day');
+            };
+
+            // 月選択
+            const selectMonth = (month) => {
+                calendar.currentDate.setMonth(month);
+
+                calendar.setViewMode('month');
+            };
+
+            // イベント追加ダイアログ表示
+            const showAddEventDialog = (date) => {
+                editingEvent.value = null;
+
+                eventForm.date        = date;
+                eventForm.title       = '';
+                eventForm.description = '';
+
+                eventDialog.value = true;
+            };
+
+            // イベント編集ダイアログ表示
+            const showEditEventDialog = (event) => {
+                editingEvent.value = event;
+
+                eventForm.date        = event.date;
+                eventForm.title       = event.title;
+                eventForm.description = event.description || '';
+
+                eventDialog.value = true;
+            };
+
+            // イベント保存
+            const saveEvent = () => {
+                if(!eventForm.title) return;
+
+                if(editingEvent.value) {
+                    calendar.updateEvent(editingEvent.value.id, eventForm.date, eventForm.title, eventForm.description);
+                } else {
+                    calendar.addEvent(eventForm.date, eventForm.title, eventForm.description);
+                }
+
+                eventDialog.value = false;
+            };
+
+            // イベント削除
+            const deleteEvent = (id) => {
+                calendar.deleteEvent(id);
+            };
+
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // ダイアログ
 
             const dialog_settings_visible = ref(false);
 
-            const dialog_settings = () => {
+            const dialog_settings = (option = '') => {
                 if(!dialog_settings_visible.value) {
                     dialog_settings_visible.value = true;
 
                     return;
+                }
+
+                switch(option) {
+                    case 'app_storage_clear':
+                        localStorage.removeItem('calendar_events');
+                        break;
                 }
             };
 
@@ -83,6 +159,17 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 display,
 
                 developer,
+                calendar,
+                eventDialog,
+                editingEvent,
+                eventForm,
+                isToday,
+                selectDate,
+                selectMonth,
+                showAddEventDialog,
+                showEditEventDialog,
+                saveEvent,
+                deleteEvent,
 
                 dialog_settings_visible,
                 dialog_settings,
@@ -108,6 +195,13 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                             </v-toolbar-items>
                         </v-toolbar>
                         <v-list lines="two">
+                            <v-list-subheader title="一般" />
+                            <v-list-item
+                                title="アプリで保存されたデータを削除"
+                                subtitle="サーバーに保存されたデータは消えません"
+                                @click="dialog_settings('app_storage_clear')"
+                            ><template #append><v-icon icon="mdi-chevron-right" /></template></v-list-item>
+                            <v-divider />
                             <v-list-subheader title="アプリケーション" />
                             <v-list-item
                                 title="バージョン"
@@ -126,7 +220,169 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 </v-dialog>
                 <v-main>
                     <v-fade-transition mode="out-in">
-                        <v-container v-if="container_visible"></v-container>
+                        <v-container v-if="container_visible">
+                            <v-card class="card-shadow" elevation="0">
+                                <v-card-title class="d-flex align-center justify-space-between">
+                                    <div class="d-flex align-center">
+                                        <v-btn icon size="small" @click="calendar.prevPeriod()">
+                                            <v-icon>mdi-chevron-left</v-icon>
+                                        </v-btn>
+                                        <v-btn icon size="small" @click="calendar.today()" class="mx-2">
+                                            <v-icon>mdi-calendar-today</v-icon>
+                                        </v-btn>
+                                        <v-btn icon size="small" @click="calendar.nextPeriod()">
+                                            <v-icon>mdi-chevron-right</v-icon>
+                                        </v-btn>
+                                        <span class="ml-4 text-h6">
+                                            <template v-if="calendar.viewMode === 'day'">
+                                                {{ calendar.getCurrentYear() }}年{{ calendar.getCurrentMonth() + 1 }}月{{ calendar.getCurrentDay() }}日
+                                            </template>
+                                            <template v-else-if="calendar.viewMode === 'month'">
+                                                {{ calendar.getCurrentYear() }}年{{ calendar.getCurrentMonth() + 1 }}月
+                                            </template>
+                                            <template v-else>
+                                                {{ calendar.getCurrentYear() }}年
+                                            </template>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <v-btn-toggle v-model="calendar.viewMode" mandatory density="compact">
+                                            <v-btn value="day" size="small">日</v-btn>
+                                            <v-btn value="month" size="small">月</v-btn>
+                                            <v-btn value="year" size="small">年</v-btn>
+                                        </v-btn-toggle>
+                                    </div>
+                                </v-card-title>
+                                <v-divider />
+
+                                <!-- 日表示 -->
+                                <v-card-text v-if="calendar.viewMode === 'day'" style="min-height: 400px;">
+                                    <div class="d-flex justify-space-between align-center mb-4">
+                                        <h3>{{ calendar.getCurrentYear() }}年{{ calendar.getCurrentMonth() + 1 }}月{{ calendar.getCurrentDay() }}日のイベント</h3>
+                                        <v-btn color="primary" size="small" @click="showAddEventDialog(calendar.formatDate(calendar.currentDate))">
+                                            <v-icon left>mdi-plus</v-icon>
+                                            イベント追加
+                                        </v-btn>
+                                    </div>
+                                    <v-list v-if="calendar.getEventsForDate(calendar.formatDate(calendar.currentDate)).length > 0">
+                                        <v-list-item
+                                            v-for="event in calendar.getEventsForDate(calendar.formatDate(calendar.currentDate))"
+                                            :key="event.id"
+                                            style="border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; margin-bottom: 8px;"
+                                        >
+                                            <v-list-item-title>{{ event.title }}</v-list-item-title>
+                                            <v-list-item-subtitle v-if="event.description">{{ event.description }}</v-list-item-subtitle>
+                                            <template v-slot:append>
+                                                <v-btn variant="plain" size="small" @click="showEditEventDialog(event)">
+                                                    <v-icon>mdi-pencil</v-icon>
+                                                </v-btn>
+                                                <v-btn variant="plain" size="small" color="error" @click="deleteEvent(event.id)">
+                                                    <v-icon>mdi-delete</v-icon>
+                                                </v-btn>
+                                            </template>
+                                        </v-list-item>
+                                    </v-list>
+                                    <div v-else class="text-center text-grey pa-8">
+                                        イベントがありません
+                                    </div>
+                                </v-card-text>
+
+                                <!-- 月表示 -->
+                                <v-card-text v-if="calendar.viewMode === 'month'">
+                                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+                                        <div v-for="day in [ '日', '月', '火', '水', '木', '金', '土' ]" :key="day"
+                                            style="text-align: center; font-weight: bold; padding: 8px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
+                                            {{ day }}
+                                        </div>
+                                        <div v-for="n in calendar.getMonthDays(calendar.getCurrentYear(), calendar.getCurrentMonth()).startDayOfWeek"
+                                            :key="'empty-' + n"></div>
+                                        <div
+                                            v-for="day in calendar.getMonthDays(calendar.getCurrentYear(), calendar.getCurrentMonth()).daysInMonth"
+                                            :key="day"
+                                            @click="selectDate(day)"
+                                            style="min-height: 80px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 4px; cursor: pointer; transition: all 0.2s;"
+                                            :style="{
+                                                backgroundColor: isToday(day) ? 'rgba(33, 150, 243, 0.1)' : 'transparent',
+                                                borderColor: isToday(day) ? '#2196f3' : 'rgba(0,0,0,0.1)'
+                                            }"
+                                            @mouseenter="e => e.target.style.backgroundColor = 'rgba(33, 150, 243, 0.05)'"
+                                            @mouseleave="e => e.target.style.backgroundColor = isToday(day) ? 'rgba(33, 150, 243, 0.1)' : 'transparent'"
+                                        >
+                                            <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">{{ day }}</div>
+                                            <div v-for="event in calendar.getEventsForDate(calendar.getCurrentYear() + '-' + String(calendar.getCurrentMonth() + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0'))"
+                                                :key="event.id"
+                                                style="font-size: 11px; background-color: #2196f3; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                {{ event.title }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </v-card-text>
+
+                                <!-- 年表示 -->
+                                <v-card-text v-if="calendar.viewMode === 'year'">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                                        <div v-for="month in 12" :key="month"
+                                            style="border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s;"
+                                            @click="selectMonth(month - 1)"
+                                            @mouseenter="e => e.target.style.backgroundColor = 'rgba(33, 150, 243, 0.05)'"
+                                            @mouseleave="e => e.target.style.backgroundColor = 'transparent'">
+                                            <div style="font-weight: bold; margin-bottom: 8px; font-size: 16px;">{{ month }}月</div>
+                                            <div style="font-size: 13px; color: #666;">
+                                                イベント: {{ calendar.getEventsForMonth(calendar.getCurrentYear(), month - 1).length }}件
+                                            </div>
+                                            <div v-if="calendar.getEventsForMonth(calendar.getCurrentYear(), month - 1).length > 0" style="margin-top: 8px;">
+                                                <div v-for="event in calendar.getEventsForMonth(calendar.getCurrentYear(), month - 1).slice(0, 3)"
+                                                    :key="event.id"
+                                                    style="font-size: 12px; padding: 4px; background-color: rgba(33, 150, 243, 0.1); border-radius: 4px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    {{ event.date.split('-')[2] }}日: {{ event.title }}
+                                                </div>
+                                                <div v-if="calendar.getEventsForMonth(calendar.getCurrentYear(), month - 1).length > 3"
+                                                    style="font-size: 11px; color: #999; margin-top: 4px;">
+                                                    +{{ calendar.getEventsForMonth(calendar.getCurrentYear(), month - 1).length - 3 }}件
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </v-card-text>
+                            </v-card>
+
+                            <!-- イベント追加/編集ダイアログ -->
+                            <v-dialog v-model="eventDialog" width="500">
+                                <v-card>
+                                    <v-card-title>
+                                        {{ editingEvent ? 'イベント編集' : 'イベント追加' }}
+                                    </v-card-title>
+                                    <v-card-text>
+                                        <v-text-field
+                                            v-model="eventForm.date"
+                                            label="日付"
+                                            type="date"
+                                            variant="outlined"
+                                            density="comfortable"
+                                        />
+                                        <v-text-field
+                                            v-model="eventForm.title"
+                                            label="タイトル"
+                                            variant="outlined"
+                                            density="comfortable"
+                                        />
+                                        <v-textarea
+                                            v-model="eventForm.description"
+                                            label="説明"
+                                            variant="outlined"
+                                            density="comfortable"
+                                            rows="3"
+                                            hide-details
+                                        />
+                                    </v-card-text>
+                                    <v-card-actions>
+                                        <v-spacer />
+                                        <v-btn @click="eventDialog = false">キャンセル</v-btn>
+                                        <v-btn color="primary" @click="saveEvent">保存</v-btn>
+                                    </v-card-actions>
+                                </v-card>
+                            </v-dialog>
+                        </v-container>
                     </v-fade-transition>
                     <v-fade-transition mode="out-in">
                         <div
