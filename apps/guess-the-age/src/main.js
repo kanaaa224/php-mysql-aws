@@ -5,11 +5,9 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 // 初期処理を非同期で実行（IIFE）
 // ローカルスコープを形成し、非同期処理（APIコールなど）に対応した形でアプリ初期処理を行っています。
 (async () => {
-    let api_default_endpoint_url = API_ENDPOINTS_URLS[0];
-
     // 汎用 API呼び出し 関数
     // エントリーポイント（index.html）で定義されたエンドポイントへAPIコールします。
-    const callAPI = async (endpoint = api_default_endpoint_url, queries = {}, requestBody = null) => {
+    const callAPI = async (endpoint = '', queries = {}, requestBody = null) => {
         const url = new URL(endpoint);
 
         for(const [ key, value ] of Object.entries(queries)) url.searchParams.set(key, value);
@@ -36,8 +34,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // 汎用 変数・関数
-
-            const developer = ref({});
 
             const guessTheAge = ref(new BinarySearch(20, 35, 4)); // デフォルト: 年齢範囲の下限 20、年齢範囲の上限 35、質問回数 4
 
@@ -93,15 +89,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                     theme.global.name.value = e.matches ? 'dark' : 'light';
                 });
 
-                try {
-                    developer.value = await callAPI();
-                } catch(e) {
-                    console.error(e);
-                }
-
-                ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='icon']")             || Object.assign(document.createElement("link"), { rel: "icon" }));
-                ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='apple-touch-icon']") || Object.assign(document.createElement("link"), { rel: "apple-touch-icon" }));
-
                 container_visible.value = true;
 
                 dialog_select_range();
@@ -113,7 +100,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 theme,
                 display,
 
-                developer,
                 guessTheAge,
 
                 dialog_settings_visible,
@@ -257,16 +243,19 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                         <div
                             v-if="container_visible"
                             class="d-flex flex-column"
-                            style="position: fixed; top: 2rem; right: 2rem; z-index: 999;"
+                            style="position: fixed; z-index: 999;"
+                            :style="display.xs.value ? 'top: 1rem; right: 1rem;' : 'top: 2rem; right: 2rem;'"
                         >
                             <v-btn
                                 icon
                                 variant="plain"
+                                :size="display.xs.value ? 'small' : 'default'"
                                 @click="dialog_settings()"
                             ><v-icon icon="mdi-cog" /></v-btn>
                             <v-btn
                                 icon
                                 variant="plain"
+                                :size="display.xs.value ? 'small' : 'default'"
                                 @click="theme.global.name.value = theme.global.current.value.dark ? 'light' : 'dark'"
                             ><v-icon :icon="theme.global.current.value.dark ? 'mdi-weather-night' : 'mdi-white-balance-sunny'" /></v-btn>
                         </div>

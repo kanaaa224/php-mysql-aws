@@ -5,11 +5,9 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 // 初期処理を非同期で実行（IIFE）
 // ローカルスコープを形成し、非同期処理（APIコールなど）に対応した形でアプリ初期処理を行っています。
 (async () => {
-    let api_default_endpoint_url = API_ENDPOINTS_URLS[0];
-
     // 汎用 API呼び出し 関数
     // エントリーポイント（index.html）で定義されたエンドポイントへAPIコールします。
-    const callAPI = async (endpoint = api_default_endpoint_url, queries = {}, requestBody = null) => {
+    const callAPI = async (endpoint = '', queries = {}, requestBody = null) => {
         const url = new URL(endpoint);
 
         for(const [ key, value ] of Object.entries(queries)) url.searchParams.set(key, value);
@@ -36,8 +34,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             // 汎用 変数・関数
-
-            const developer = ref({});
 
             const calendar = reactive(new Calendar()); // カレンダーインスタンス
 
@@ -178,15 +174,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                     theme.global.name.value = e.matches ? 'dark' : 'light';
                 });
 
-                try {
-                    developer.value = await callAPI();
-                } catch(e) {
-                    console.error(e);
-                }
-
-                ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='icon']")             || Object.assign(document.createElement("link"), { rel: "icon" }));
-                ((l) => (l.href = developer.value.avatar_url, document.head.appendChild(l)))(document.querySelector("link[rel='apple-touch-icon']") || Object.assign(document.createElement("link"), { rel: "apple-touch-icon" }));
-
                 container_visible.value = true;
             });
 
@@ -196,7 +183,6 @@ const { createVuetify, useTheme, useDisplay } = Vuetify;
                 theme,
                 display,
 
-                developer,
                 calendar,
                 eventDialog,
                 editingEvent,
